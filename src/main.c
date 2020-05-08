@@ -167,7 +167,15 @@ void getEntities (
 }
 
 int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
-
+    coordinates *dragon = NULL;
+    coordinates *princesses = NULL;
+    int n_of_princesses = 0;
+    
+    // get the dragons and princesses' coordinates
+    getEntities(mapa, &n, &m, &dragon, &princesses, &n_of_princesses);
+    coordinates *start = {0, 0};
+    
+    return (int *) calloc(1, sizeof(int));
 }
 
 int main () {
@@ -177,7 +185,7 @@ int main () {
     
     int *path = zachran_princezne(map, n, m, t, &path_length);
     result(map, &t, path, &path_length);
-
+    
     print_map(map, &n, &m);
     print_path(path, &path_length);
     
