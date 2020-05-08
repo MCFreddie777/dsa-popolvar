@@ -9,12 +9,28 @@
 #define PRINCESS 'P'
 #define BLOCK 'N'
 #define BUSH 'H'
-#define PATH 'C'
 
-typedef struct coordinates {
+typedef struct Coordinates {
     int x;
     int y;
-} coordinates;
+} Coordinates;
+
+typedef struct Node {
+    Coordinates coordinates;
+    int value;
+    struct Node *prev;
+} Node;
+
+typedef struct Heap {
+    Node *heap;
+    int size;
+} Heap;
+
+typedef struct Map {
+    char **map;
+    int x;
+    int y;
+} Map;
 
 /**
  * Loads the file from the map
@@ -124,56 +140,198 @@ void result (char **map, const int *t, int *path, const int *path_length) {
  * Finds all the entities on the map and their coordinates
  *
  * @param map
- * @param x height of the map
- * @param y width of the map
  * @param dragon coordinates of the dragon
  * @param princesses array of princesses where they should be stored
  * @param n_of_princessess number of princesses
  */
 void getEntities (
-    char **map,
-    const int *x,
-    const int *y,
-    coordinates **dragon,
-    coordinates **princesses,
+    Map *map,
+    Coordinates *dragon,
+    Coordinates *princesses,
     int *n_of_princessess
 ) {
-    for (int i = 0; i < *x; ++i) {
-        for (int j = 0; j < *y; ++j) {
-            // get the (one and only) dragon coords
-            if (map[i][j] == DRAGON) {
-                *dragon = (coordinates *) malloc(sizeof(coordinates));
-                (*dragon)->x = i;
-                (*dragon)->y = j;
+    for (int i = 0; i < map->x; ++i) {
+        for (int j = 0; j < map->y; ++j) {
+            if (map->map[i][j] == DRAGON && dragon) {
+                dragon->x = i;
+                dragon->y = j;
             }
-            else if (map[i][j] == PRINCESS) {
-                if (*princesses == NULL) {
-                    // initialize the array of princesses
-                    *n_of_princessess = 1;
-                    *princesses = (coordinates *) malloc(sizeof(coordinates));
-                }
-                else {
+            else if (map->map[i][j] == PRINCESS) {
+                if (*n_of_princessess != 0) {
                     // enlarge the array of princesses
-                    *princesses = (coordinates *) realloc(
-                        *princesses,
-                        ++(*n_of_princessess) * sizeof(coordinates)
+                    princesses = (Coordinates *) realloc(
+                        princesses,
+                        (*n_of_princessess + 1) * sizeof(Coordinates)
                     );
                 }
-                (*princesses)[*n_of_princessess - 1].x = i;
-                (*princesses)[*n_of_princessess - 1].y = j;
+                ++(*n_of_princessess);
+                princesses[(*n_of_princessess) - 1].x = i;
+                princesses[(*n_of_princessess) - 1].y = j;
             }
         }
     }
 }
 
+/**
+ * Helper function to check whether those coordinates
+ * are not out of boundaries of the map
+ *
+ * @param map
+ * @param x
+ * @param y
+ * @return
+ */
+short outOfBounds (Map *map, int x, int y) {
+    return (short) (x < 0 || x >= map->x || y < 0 || y >= map->y);
+};
+
+/**
+ * This function calculates the next node after moving according to rules
+ *
+ * @param node current node
+ * @param map
+ * @param x number of steps to move on x axis
+ * @param y number of steps to move on y axis
+ * @return new node on new direction | null if the map on those coordinates is BLOCK/NULL
+ */
+Node *move (Node *node, Map *map, int x, const int y) {
+    // If we're out of the map or the pathway is blocked
+    if (outOfBounds(map, (node->coordinates.x + x), node->coordinates.y + y) ||
+        map->map[node->coordinates.x + x][node->coordinates.y + y] == BLOCK
+        ) {
+        return NULL;
+    }
+    
+    Node *new = (Node *) malloc(sizeof(Node));
+    new->coordinates.x = node->coordinates.x + x;
+    new->coordinates.y = node->coordinates.y + y;
+    
+    // Remember the previous node
+    new->prev = node;
+    
+    // Increment the pathway "cost" according to map
+    new->value = node->value + (map->map[new->coordinates.x][new->coordinates.y] == BUSH ? 2 : 1);
+    
+    return new;
+}
+
+void insert (Node *node, Heap **heap) {
+    if (node != NULL) {
+        ++(*heap)->size;
+        
+        if ((*heap)->heap == NULL) {
+            ((*heap)->heap) = (Node *) malloc(sizeof(Node));
+        }
+        else {
+            // Enlarge the heap by one element
+            ((*heap)->heap) = (Node *) realloc((*heap)->heap, ((*heap)->size * sizeof(Node)));
+        }
+        
+        // Insert to the very end of the heap
+        Node *last_element = &((*heap)->heap[(*heap)->size - 1]);
+        *last_element = *node;
+        
+        // Rearrange heap
+        Node temp = *last_element;
+        
+        int i = (*heap)->size;
+        Node *parent = &((*heap)->heap[(i - 1) / 2]);
+        
+        while (i > 1 && temp.value < parent->value) {
+            (*heap)->heap[i] = *parent;
+            i = (i - 1) / 2;
+            parent = &((*heap)->heap[(i - 1) / 2]);
+        }
+        (*heap)->heap[i] = temp;
+    }
+}
+
+Node pop (Heap **heap) {
+    Node root = (*heap)->heap[0];
+    
+    (*heap)->size--;
+    if ((*heap)->size == 0) {
+        (*heap)->heap = NULL;
+        return root;
+    }
+    
+    // swap leaf and root
+    (*heap)->heap[0] = (*heap)->heap[(*heap)->size];
+    
+    // shrink the array
+    ((*heap)->heap) = (Node *) realloc((*heap)->heap, ((*heap)->size * sizeof(Node)));
+    
+    int where = 0;
+    while (1) {
+        int dest = where;
+        
+        if (2 * where + 1 < (*heap)->size - 1 && (*heap)->heap[2 * where + 1].value < (*heap)
+            ->heap[dest].value)
+            dest = 2 * where + 1;
+        if (2 * where + 2 < (*heap)->size - 1 && (*heap)->heap[2 * where + 2].value < (*heap)
+            ->heap[dest].value)
+            dest = 2 * where + 2;
+        
+        if (dest != where) {
+            Node temp = (*heap)->heap[where];
+            (*heap)->heap[where] = (*heap)->heap[dest];
+            (*heap)->heap[dest] = temp;
+            where = dest;
+        }
+        else {
+            return root;
+        }
+    }
+};
+
+/**
+ *
+ * @param start
+ * @param stop
+ */
+Heap *dijkstra (Map *map, Coordinates *start, Coordinates *stop) {
+    
+    Heap *heap = malloc(sizeof(Heap));
+    heap->size = 0;
+    heap->heap = (Node *) malloc(sizeof(Node));
+    
+    // Init heap with startnode
+    Node *startNode = malloc(sizeof(Node));
+    startNode->coordinates = *start;
+    startNode->value = 1;
+    startNode->prev = NULL;
+    insert(startNode, &heap);
+    
+    Node actual = pop(&heap);
+    
+    while (actual.coordinates.x != stop->x || actual.coordinates.y != stop->y) {
+        insert(move(&actual, map, -1, 0), &heap); // up
+        insert(move(&actual, map, 0, 1), &heap);  // right
+        insert(move(&actual, map, +1, 0), &heap); // down
+        insert(move(&actual, map, 0, -1), &heap); // left
+        actual = pop(&heap);
+    }
+    
+    return heap;
+}
+
 int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
-    coordinates *dragon = NULL;
-    coordinates *princesses = NULL;
+    Coordinates *dragon = (Coordinates *) malloc(sizeof(Coordinates));
+    Coordinates *princesses = (Coordinates *) malloc(sizeof(Coordinates));
     int n_of_princesses = 0;
     
+    // initialize the map object
+    Map *map = (Map *) malloc(sizeof(Map));
+    map->map = mapa;
+    map->x = n;
+    map->y = m;
+    
     // get the dragons and princesses' coordinates
-    getEntities(mapa, &n, &m, &dragon, &princesses, &n_of_princesses);
-    coordinates *start = {0, 0};
+    getEntities(map, dragon, princesses, &n_of_princesses);
+    Coordinates start = {.x=0, .y=0};
+    
+    // Get the dragon, POPOLVAR!
+    Heap *path = dijkstra(map, &start, dragon);
     
     return (int *) calloc(1, sizeof(int));
 }
@@ -182,12 +340,11 @@ int main () {
     int n = 0, m = 0, t = 0, path_length = 0;
     
     char **map = file_load("input/test.txt", &n, &m, &t);
-    
     int *path = zachran_princezne(map, n, m, t, &path_length);
-    result(map, &t, path, &path_length);
+    //result(map, &t, path, &path_length);
     
-    print_map(map, &n, &m);
-    print_path(path, &path_length);
+    //print_map(map, &n, &m);
+    //print_path(path, &path_length);
     
     free(path);
     free_map(map, &n);
