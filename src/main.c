@@ -75,8 +75,8 @@ char **file_load (char *path, int *x, int *y, int *t) {
  * @param map the map
  * @param x height of the map
  */
-void free_map (char **map, const int *x) {
-    for (int i = 0; i < *x; i++) {
+void free_map (char **map, const int x) {
+    for (int i = 0; i < x; i++) {
         free(map[i]);
     }
     free(map);
@@ -104,7 +104,7 @@ void result (char **mapa, const int *t, int *cesta, const int dlzka_cesty) {
         else
             cas += 1;
         
-        if (mapa[cesta[i * 2 + 1]][cesta[i * 2]] == 'D' && cas > t)
+        if (mapa[cesta[i * 2 + 1]][cesta[i * 2]] == 'D' && cas > *t)
             printf("Nestihol si zabit draka!\n");
         
         if (mapa[cesta[i * 2 + 1]][cesta[i * 2]] == 'N')
@@ -289,22 +289,36 @@ Node *pop (Heap *heap) {
  * @param stop
  */
 Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
+    // initialize the heap
     Heap *heap = (Heap *) malloc(sizeof(Heap));
     heap->size = 0;
     heap->max_size = 4;
     heap->heap = NULL;
     
+    // boolean array to mark the visited / not visited
+    short **flags = (short **) malloc(map->x * sizeof(short *));
+    for (int i = 0; i < map->x; i++) {
+        flags[i] = (short *) malloc(map->y * sizeof(short));
+    }
+    
+    // push starting node into the heap
     push(start, heap);
     
+    // X & Y direction vectors
     const int sX[4] = {-1, 0, 1, 0};
     const int sY[4] = {0, 1, 0, -1};
     
     Node *actual;
     do {
         actual = pop(heap);
+        flags[actual->coordinates.x][actual->coordinates.y] = 1;
         for (int i = 0; i < 4; i++) {
             Node *m = move(actual, map, sX[i], sY[i]);
-            if (m == NULL) continue;
+            
+            // Check if the new coordinates are not out of the map
+            // or has been visited previously
+            if (m == NULL || flags[m->coordinates.x][m->coordinates.y]) continue;
+            
             m->prev = actual;
             push(m, heap);
         }
@@ -395,7 +409,7 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     Node *path = dijkstra(map, start, dragon);
     
     // TODO:  Get the shortest path by permuting between princesses
-    permutePrincesses(map, path, princesses, n_of_princesses, 0);
+    // permutePrincesses(map, path, princesses, n_of_princesses, 0);
     
     /*
      * Fill the found path into array of int* in reverse order
@@ -439,11 +453,11 @@ int main () {
             case 0:
                 return 0;
             case 1:
-                mapa = file_load("input/test.txt", &n, &m, &t);
+                mapa = file_load("input/test1.txt", &n, &m, &t);
                 cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
-                exit(0); // TODO: remove
                 break;
             case 2:
+                n = 10;
                 m = 10;
                 t = 12;
                 mapa = (char **) malloc(n * sizeof(char *));
@@ -460,13 +474,16 @@ int main () {
                 cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
                 break;
             case 3:
+                mapa = file_load("input/test3.txt", &n, &m, &t);
+                cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
                 break;
             default:
                 continue;
         }
         result(mapa, &t, cesta, dlzka_cesty);
         free(cesta);
-        free_map(mapa, &n);
+        free_map(mapa, n); // TODO: buggy in case of test2
+        exit(0); // TODO: remove
     }
     return 0;
 }
