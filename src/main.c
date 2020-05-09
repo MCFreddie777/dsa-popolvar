@@ -70,33 +70,6 @@ char **file_load (char *path, int *x, int *y, int *t) {
 }
 
 /**
- * Pretty prints the map to the console
- *
- * @param map
- * @param x height of the map
- * @param y width of the map
- */
-void print_map (char **map, const int *x, const int *y) {
-    for (int i = 0; i < *x; ++i) {
-        for (int j = 0; j < *y; ++j) {
-            printf("%c", map[i][j]);
-        }
-        printf("\n");
-    }
-}
-
-/**
- * Pretty prints the path to the console
- * @param path the path, min heap of coordinates
- * @param path_length
- */
-void print_path (int *path, const int *path_length) {
-    for (int i = 0; i < *path_length; i++) {
-        printf("%d %d", path[i * 2 + 1], path[i * 2]);
-    }
-}
-
-/**
  * Frees the 2D array memory
  *
  * @param map the map
@@ -109,32 +82,42 @@ void free_map (char **map, const int *x) {
     free(map);
 }
 
-
-void result (char **map, const int *t, int *path, const int *path_length) {
-    int time = 0;
+void free_linkedlist (Node *start) {
+    Node *actual = start;
+    Node *prev = start->prev;
     
-    for (int i = 0; i < *path_length; i++) {
-        printf("%d %d\n", path[i * 2], path[i * 2 + 1]);
+    while (prev != NULL) {
+        free(actual);
+        actual = prev;
+        prev = actual->prev;
+    };
+}
+
+void result (char **mapa, const int *t, int *cesta, const int dlzka_cesty) {
+    int cas = 0;
+    
+    for (int i = 0; i < dlzka_cesty; i++) {
+        printf("%d %d\n", cesta[i * 2], cesta[i * 2 + 1]);
         
-        if (map[path[i * 2 + 1]][path[i * 2]] == 'H')
-            time += 2;
+        if (mapa[cesta[i * 2 + 1]][cesta[i * 2]] == 'H')
+            cas += 2;
         else
-            time += 1;
+            cas += 1;
         
-        if (map[path[i * 2 + 1]][path[i * 2]] == 'D' && time > *t)
+        if (mapa[cesta[i * 2 + 1]][cesta[i * 2]] == 'D' && cas > t)
             printf("Nestihol si zabit draka!\n");
         
-        if (map[path[i * 2 + 1]][path[i * 2]] == 'N')
+        if (mapa[cesta[i * 2 + 1]][cesta[i * 2]] == 'N')
             printf("Prechod cez nepriechodnu prekazku!\n");
         
         if (i > 0 && (
-            abs(path[i * 2 + 1] - path[(i - 1) * 2 + 1]) +
-            abs(path[i * 2] - path[(i - 1) * 2]) > 1
+            abs(cesta[i * 2 + 1] - cesta[(i - 1) * 2 + 1]) +
+            abs(cesta[i * 2] - cesta[(i - 1) * 2]) > 1
         )) {
             printf("Neplatny posun Popolvara!\n");
         }
     }
-    printf("%d\n", time);
+    printf("%d\n", cas);
 }
 
 /**
@@ -188,6 +171,22 @@ void getEntities (
 short outOfBounds (Map *map, int x, int y) {
     return (short) (x < 0 || x >= map->x || y < 0 || y >= map->y);
 };
+
+/**
+ * Reverses a linked list
+ */
+Node *reverse_linkedlist (Node *last) {
+    Node *current = last;
+    Node *prev = NULL, *next = NULL;
+    
+    while (current != NULL) {
+        next = current->prev;
+        current->prev = prev;
+        prev = current;
+        current = next;
+    }
+    return prev;
+}
 
 /**
  * This function calculates the next node after moving according to rules
@@ -395,10 +394,28 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     // Get the dragon, POPOLVAR!
     Node *path = dijkstra(map, start, dragon);
     
-    // Get the shortest path by permuting between princesses
+    // TODO:  Get the shortest path by permuting between princesses
     permutePrincesses(map, path, princesses, n_of_princesses, 0);
     
-    return (int *) calloc(1, sizeof(int)); // TODO return minheap of coordinates
+    /*
+     * Fill the found path into array of int* in reverse order
+     * (Requirement by the printing "result()" function given by the teacher)
+     */
+    int *arr = (int *) malloc(2 * path->value * sizeof(int));
+    path = reverse_linkedlist(path);
+    Node *actual = path;
+    
+    int i = 0;
+    while (actual != NULL) {
+        arr[i] = actual->coordinates.y;
+        arr[i + 1] = actual->coordinates.x;
+        i += 2;
+        actual = actual->prev;
+    };
+    
+    free_linkedlist(path);
+    *dlzka_cesty = (i / 2);
+    return arr;
 }
 
 int main () {
@@ -406,10 +423,7 @@ int main () {
     
     char **map = file_load("input/test.txt", &n, &m, &t);
     int *path = zachran_princezne(map, n, m, t, &path_length);
-    //result(map, &t, path, &path_length);
-    
-    //print_map(map, &n, &m);
-    //print_path(path, &path_length);
+    result(map, &t, path, path_length);
     
     free(path);
     free_map(map, &n);
