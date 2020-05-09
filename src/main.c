@@ -313,17 +313,20 @@ Node dijkstra (Map *map, Node *start, Coordinates *stop) {
     return actual;
 }
 
-Node getLastPrincess (Map *map, Node *start, Coordinates *princesses) {
-    Node princess1 = dijkstra(map, start, princesses);
-    printf("P1 %d\n", princess1.value);
-    
-    Node princess2 = dijkstra(map, &princess1, princesses + 1);
-    printf("P2 %d\n", princess2.value);
-    
-    Node princess3 = dijkstra(map, &princess2, princesses + 2);
-    printf("P3 %d\n\n", princess3.value);
-    
-    return princess3;
+/**
+ * Recursively gets the path from first to the last princess
+ * @return
+ */
+Node getLastPrincess (Map *map, Node *start, Coordinates *princesses, int n_of_princesses) {
+    if (n_of_princesses == 1)
+        // First princess from a permutated array
+        return dijkstra(map, start, princesses);
+    else {
+        // Get the princess before
+        Node temp = getLastPrincess(map, start, princesses, n_of_princesses - 1);
+        // Run dijkstra from princess before till current princess
+        return dijkstra(map, &temp, princesses + (n_of_princesses - 1));
+    }
 }
 
 void swap (Coordinates *x, Coordinates *y) {
@@ -333,6 +336,15 @@ void swap (Coordinates *x, Coordinates *y) {
     *y = temp;
 }
 
+/**
+ * Function which permutes given array of princesses
+ *
+ * @param map
+ * @param start start node where to start from in dijkstra
+ * @param princesses array of princesses
+ * @param n_of_princesses
+ * @param index
+ */
 void permutePrincesses (
     Map *map,
     Node *start,
@@ -346,7 +358,13 @@ void permutePrincesses (
         swap(princesses + index, princesses + i);
     }
     if (index == n_of_princesses - 1) {
-        getLastPrincess(map, start, princesses);
+        Node last = getLastPrincess(map, start, princesses, n_of_princesses);
+        printf(
+            "[%d,%d] | %d\n",
+            last.coordinates.x,
+            last.coordinates.y,
+            last.value
+        );
     }
 }
 
@@ -376,7 +394,6 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     
     // Get the shortest path by permuting between princesses
     permutePrincesses(map, &path, princesses, n_of_princesses, 0);
-    //    printf("final: [%d,%d], value: %d", last.coordinates.x, last.coordinates.y, last.value);
     
     return (int *) calloc(1, sizeof(int)); // TODO return minheap of coordinates
 }
