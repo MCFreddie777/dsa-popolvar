@@ -22,8 +22,9 @@ typedef struct Node {
 } Node;
 
 typedef struct Heap {
-    Node *heap;
+    Node **heap;
     int size;
+    int max_size;
 } Heap;
 
 typedef struct Map {
@@ -152,22 +153,25 @@ void getEntities (
 ) {
     for (int i = 0; i < map->x; ++i) {
         for (int j = 0; j < map->y; ++j) {
+            // We don't care about other entities
+            if (map->map[i][j] != DRAGON && map->map[i][j] != PRINCESS) continue;
+            
             if (map->map[i][j] == DRAGON && dragon) {
                 dragon->x = i;
                 dragon->y = j;
+                continue;
             }
-            else if (map->map[i][j] == PRINCESS) {
-                if (*n_of_princesses != 0) {
-                    // enlarge the array of princesses
-                    *princesses = (Coordinates *) realloc(
-                        *princesses,
-                        (*n_of_princesses + 1) * sizeof(Coordinates)
-                    );
-                }
-                ++(*n_of_princesses);
-                (*princesses)[(*n_of_princesses) - 1].x = i;
-                (*princesses)[(*n_of_princesses) - 1].y = j;
+            // If the entity is princess
+            if (*n_of_princesses != 0) {
+                // enlarge the array of princesses
+                *princesses = (Coordinates *) realloc(
+                    *princesses,
+                    (*n_of_princesses + 1) * sizeof(Coordinates)
+                );
             }
+            (*n_of_princesses)++;
+            (*princesses)[(*n_of_princesses) - 1].x = i;
+            (*princesses)[(*n_of_princesses) - 1].y = j;
         }
     }
 }
@@ -194,7 +198,7 @@ short outOfBounds (Map *map, int x, int y) {
  * @param y number of steps to move on y axis
  * @return new node on new direction | null if the map on those coordinates is BLOCK/NULL
  */
-Node *move (Node *node, Map *map, int x, const int y) {
+Node *move (Node *node, Map *map, const int x, const int y) {
     // If we're out of the map or the pathway is blocked
     if (outOfBounds(map, (node->coordinates.x + x), node->coordinates.y + y) ||
         map->map[node->coordinates.x + x][node->coordinates.y + y] == BLOCK
@@ -215,74 +219,67 @@ Node *move (Node *node, Map *map, int x, const int y) {
     return new;
 }
 
-void insert (Node *node, Heap **heap) {
-    if (node != NULL) {
-        ++(*heap)->size;
-        
-        if ((*heap)->heap == NULL) {
-            ((*heap)->heap) = (Node *) malloc(sizeof(Node));
-        }
-        else {
-            // Enlarge the heap by one element
-            ((*heap)->heap) = (Node *) realloc((*heap)->heap, ((*heap)->size * sizeof(Node)));
-        }
-        
-        // Insert to the very end of the heap
-        Node *last_element = &((*heap)->heap[(*heap)->size - 1]);
-        *last_element = *node;
-        
-        // Rearrange heap
-        Node temp = *last_element;
-        
-        int i = (*heap)->size - 1;
-        Node *parent = &((*heap)->heap[(i - 1) / 2]);
-        
-        while (i > 0 && temp.value < parent->value) {
-            (*heap)->heap[i] = *parent;
-            i = (i - 1) / 2;
-            parent = &((*heap)->heap[(i - 1) / 2]);
-        }
-        (*heap)->heap[i] = temp;
+void push (Node *node, Heap *heap) {
+    heap->size++;
+    
+    if (heap->heap == NULL) {
+        (heap->heap) = (Node **) malloc(heap->max_size * sizeof(Node *));
     }
+    else {
+        // Resize to double the length to avoid O(n^2) resizing.
+        if (heap->size == heap->max_size) {
+            heap->max_size *= 2;
+            (heap->heap) = (Node **) realloc(heap->heap, (heap->max_size * sizeof(Node *)));
+        }
+    }
+    
+    // Insert to the very end of the heap
+    heap->heap[heap->size - 1] = node;
+    // Rearrange heap
+    Node *temp = heap->heap[heap->size - 1];
+    
+    int i = heap->size - 1;
+    Node *parent = heap->heap[(i - 1) / 2];
+    
+    while (i > 0 && temp->value < parent->value) {
+        heap->heap[i] = parent;
+        i = (i - 1) / 2;
+        parent = heap->heap[(i - 1) / 2];
+    }
+    heap->heap[i] = temp;
 }
 
-Node pop (Heap **heap) {
-    Node root = (*heap)->heap[0];
+Node *pop (Heap *heap) {
+    Node *root = heap->heap[0];
     
-    (*heap)->size--;
-    if ((*heap)->size == 0) {
-        (*heap)->heap = NULL;
+    heap->size--;
+    if (heap->size == 0) {
+        heap->heap = NULL;
         return root;
     }
     
     // swap leaf and root
-    (*heap)->heap[0] = (*heap)->heap[(*heap)->size];
-    
-    // shrink the array
-    ((*heap)->heap) = (Node *) realloc((*heap)->heap, ((*heap)->size * sizeof(Node)));
+    heap->heap[0] = heap->heap[heap->size];
     
     int i = 0;
     int j = (2 * i) + 1;
     
-    while (j < (*heap)->size) {
+    while (j < heap->size) {
         // select the lesser children
-        if ((*heap)->heap[j].value > (*heap)->heap[j + 1].value) {
-            j = j + 1;
-        }
+        if (heap->heap[j]->value > heap->heap[j + 1]->value) j++;
+        if (heap->heap[i]->value <= heap->heap[j]->value) break;
         
         // swap the parent and child
-        if ((*heap)->heap[i].value > (*heap)->heap[j].value) {
-            Node temp = (*heap)->heap[i];
-            (*heap)->heap[i] = (*heap)->heap[j];
-            (*heap)->heap[j] = temp;
-            
-            // move the "parent" to the child
-            i = j;
-            
-            // move the "child pointer" into new parents child
-            j = (2 * j) + 1;
-        }
-        else break;
+        Node *temp = heap->heap[i];
+        heap->heap[i] = heap->heap[j];
+        heap->heap[j] = temp;
+        
+        // move the "parent" to the child
+        i = j;
+        
+        // move the "child pointer" into new parents child
+        j = (2 * j) + 1;
+        
     }
     return root;
 };
@@ -292,21 +289,27 @@ Node pop (Heap **heap) {
  * @param start
  * @param stop
  */
-Node dijkstra (Map *map, Node *start, Coordinates *stop) {
-    Heap *heap = malloc(sizeof(Heap));
+Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
+    Heap *heap = (Heap *) malloc(sizeof(Heap));
     heap->size = 0;
+    heap->max_size = 4;
     heap->heap = NULL;
     
-    insert(start, &heap);
-    Node actual = pop(&heap);
+    push(start, heap);
     
-    while (actual.coordinates.x != stop->x || actual.coordinates.y != stop->y) {
-        insert(move(&actual, map, -1, 0), &heap); // up
-        insert(move(&actual, map, 0, +1), &heap);  // right
-        insert(move(&actual, map, +1, 0), &heap); // down
-        insert(move(&actual, map, 0, -1), &heap); // left
-        actual = pop(&heap);
-    }
+    const int sX[4] = {-1, 0, 1, 0};
+    const int sY[4] = {0, 1, 0, -1};
+    
+    Node *actual;
+    do {
+        actual = pop(heap);
+        for (int i = 0; i < 4; i++) {
+            Node *m = move(actual, map, sX[i], sY[i]);
+            if (m == NULL) continue;
+            m->prev = actual;
+            push(m, heap);
+        }
+    } while (actual->coordinates.x != stop->x || actual->coordinates.y != stop->y);
     
     free(heap->heap);
     free(heap);
@@ -317,15 +320,15 @@ Node dijkstra (Map *map, Node *start, Coordinates *stop) {
  * Recursively gets the path from first to the last princess
  * @return
  */
-Node getLastPrincess (Map *map, Node *start, Coordinates *princesses, int n_of_princesses) {
+Node *getLastPrincess (Map *map, Node *start, Coordinates *princesses, int n_of_princesses) {
     if (n_of_princesses == 1)
         // First princess from a permutated array
         return dijkstra(map, start, princesses);
     else {
         // Get the princess before
-        Node temp = getLastPrincess(map, start, princesses, n_of_princesses - 1);
+        Node *temp = getLastPrincess(map, start, princesses, n_of_princesses - 1);
         // Run dijkstra from princess before till current princess
-        return dijkstra(map, &temp, princesses + (n_of_princesses - 1));
+        return dijkstra(map, temp, princesses + (n_of_princesses - 1));
     }
 }
 
@@ -358,12 +361,12 @@ void permutePrincesses (
         swap(princesses + index, princesses + i);
     }
     if (index == n_of_princesses - 1) {
-        Node last = getLastPrincess(map, start, princesses, n_of_princesses);
+        Node *last = getLastPrincess(map, start, princesses, n_of_princesses);
         printf(
             "[%d,%d] | %d\n",
-            last.coordinates.x,
-            last.coordinates.y,
-            last.value
+            last->coordinates.x,
+            last->coordinates.y,
+            last->value
         );
     }
 }
@@ -390,10 +393,10 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     start->prev = NULL;
     
     // Get the dragon, POPOLVAR!
-    Node path = dijkstra(map, start, dragon);
+    Node *path = dijkstra(map, start, dragon);
     
     // Get the shortest path by permuting between princesses
-    permutePrincesses(map, &path, princesses, n_of_princesses, 0);
+    permutePrincesses(map, path, princesses, n_of_princesses, 0);
     
     return (int *) calloc(1, sizeof(int)); // TODO return minheap of coordinates
 }
