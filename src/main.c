@@ -284,6 +284,7 @@ Node pop (Heap **heap) {
         }
         else break;
     }
+    return root;
 };
 
 /**
@@ -325,9 +326,28 @@ Node getLastPrincess (Map *map, Node *start, Coordinates *princesses) {
     return princess3;
 }
 
-void permutePrincesses (Map *map, Node *start, Coordinates *princesses, int n_of_princesses) {
-    Node last = getLastPrincess(map, start, princesses);
-    printf("final: [%d,%d], value: %d", last.coordinates.x, last.coordinates.y, last.value);
+void swap (Coordinates *x, Coordinates *y) {
+    Coordinates temp;
+    temp = *x;
+    *x = *y;
+    *y = temp;
+}
+
+void permutePrincesses (
+    Map *map,
+    Node *start,
+    Coordinates *princesses,
+    int n_of_princesses,
+    int index
+) {
+    for (int i = index; i < n_of_princesses; i++) {
+        swap(princesses + i, princesses + index);
+        permutePrincesses(map, start, princesses, n_of_princesses, index + 1);
+        swap(princesses + index, princesses + i);
+    }
+    if (index == n_of_princesses - 1) {
+        getLastPrincess(map, start, princesses);
+    }
 }
 
 int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
@@ -355,7 +375,8 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     Node path = dijkstra(map, start, dragon);
     
     // Get the shortest path by permuting between princesses
-    permutePrincesses(map, &path, princesses, n_of_princesses);
+    permutePrincesses(map, &path, princesses, n_of_princesses, 0);
+    //    printf("final: [%d,%d], value: %d", last.coordinates.x, last.coordinates.y, last.value);
     
     return (int *) calloc(1, sizeof(int)); // TODO return minheap of coordinates
 }
