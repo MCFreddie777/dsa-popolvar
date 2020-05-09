@@ -284,7 +284,6 @@ Node pop (Heap **heap) {
         }
         else break;
     }
-    return root;
 };
 
 /**
@@ -292,24 +291,17 @@ Node pop (Heap **heap) {
  * @param start
  * @param stop
  */
-Heap *dijkstra (Map *map, Coordinates *start, Coordinates *stop) {
-    
+Heap *dijkstra (Map *map, Node *start, Coordinates *stop) {
     Heap *heap = malloc(sizeof(Heap));
     heap->size = 0;
     heap->heap = NULL;
     
-    // Init heap with startnode
-    Node *startNode = malloc(sizeof(Node));
-    startNode->coordinates = *start;
-    startNode->value = 1;
-    startNode->prev = NULL;
-    
-    insert(startNode, &heap);
+    insert(start, &heap);
     Node actual = pop(&heap);
     
     while (actual.coordinates.x != stop->x || actual.coordinates.y != stop->y) {
         insert(move(&actual, map, -1, 0), &heap); // up
-        insert(move(&actual, map, 0, 1), &heap);  // right
+        insert(move(&actual, map, 0, +1), &heap);  // right
         insert(move(&actual, map, +1, 0), &heap); // down
         insert(move(&actual, map, 0, -1), &heap); // left
         actual = pop(&heap);
@@ -331,18 +323,24 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     
     // get the dragons and princesses' coordinates
     getEntities(map, dragon, princesses, &n_of_princesses);
-    Coordinates start = {.x=0, .y=0};
+    
+    // Init heap with starting node
+    Node *start = malloc(sizeof(Node));
+    start->coordinates.x = 0;
+    start->coordinates.y = 0;
+    start->value = 1;
+    start->prev = NULL;
     
     // Get the dragon, POPOLVAR!
-    Heap *path = dijkstra(map, &start, dragon);
+    Heap *path = dijkstra(map, start, dragon);
     
-    return (int *) calloc(1, sizeof(int));
+    return (int *) calloc(1, sizeof(int)); // TODO return minheap of coordinates
 }
 
 int main () {
     int n = 0, m = 0, t = 0, path_length = 0;
     
-    char **map = file_load("input/devtest.txt", &n, &m, &t);
+    char **map = file_load("input/test.txt", &n, &m, &t);
     int *path = zachran_princezne(map, n, m, t, &path_length);
     //result(map, &t, path, &path_length);
     
