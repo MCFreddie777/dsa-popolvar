@@ -142,13 +142,13 @@ void result (char **map, const int *t, int *path, const int *path_length) {
  * @param map
  * @param dragon coordinates of the dragon
  * @param princesses array of princesses where they should be stored
- * @param n_of_princessess number of princesses
+ * @param n_of_princesses number of princesses
  */
 void getEntities (
     Map *map,
     Coordinates *dragon,
-    Coordinates *princesses,
-    int *n_of_princessess
+    Coordinates **princesses,
+    int *n_of_princesses
 ) {
     for (int i = 0; i < map->x; ++i) {
         for (int j = 0; j < map->y; ++j) {
@@ -157,16 +157,16 @@ void getEntities (
                 dragon->y = j;
             }
             else if (map->map[i][j] == PRINCESS) {
-                if (*n_of_princessess != 0) {
+                if (*n_of_princesses != 0) {
                     // enlarge the array of princesses
-                    princesses = (Coordinates *) realloc(
-                        princesses,
-                        (*n_of_princessess + 1) * sizeof(Coordinates)
+                    *princesses = (Coordinates *) realloc(
+                        *princesses,
+                        (*n_of_princesses + 1) * sizeof(Coordinates)
                     );
                 }
-                ++(*n_of_princessess);
-                princesses[(*n_of_princessess) - 1].x = i;
-                princesses[(*n_of_princessess) - 1].y = j;
+                ++(*n_of_princesses);
+                (*princesses)[(*n_of_princesses) - 1].x = i;
+                (*princesses)[(*n_of_princesses) - 1].y = j;
             }
         }
     }
@@ -291,7 +291,7 @@ Node pop (Heap **heap) {
  * @param start
  * @param stop
  */
-Heap *dijkstra (Map *map, Node *start, Coordinates *stop) {
+Node dijkstra (Map *map, Node *start, Coordinates *stop) {
     Heap *heap = malloc(sizeof(Heap));
     heap->size = 0;
     heap->heap = NULL;
@@ -307,7 +307,9 @@ Heap *dijkstra (Map *map, Node *start, Coordinates *stop) {
         actual = pop(&heap);
     }
     
-    return heap;
+    free(heap->heap);
+    free(heap);
+    return actual;
 }
 
 int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
@@ -322,7 +324,7 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     map->y = m;
     
     // get the dragons and princesses' coordinates
-    getEntities(map, dragon, princesses, &n_of_princesses);
+    getEntities(map, dragon, &princesses, &n_of_princesses);
     
     // Init heap with starting node
     Node *start = malloc(sizeof(Node));
@@ -332,7 +334,17 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     start->prev = NULL;
     
     // Get the dragon, POPOLVAR!
-    Heap *path = dijkstra(map, start, dragon);
+    Node path = dijkstra(map, start, dragon);
+    printf("D %d\n", path.value);
+    
+    Node princess1 = dijkstra(map, &path, princesses);
+    printf("P1 %d\n", princess1.value);
+    
+    Node princess2 = dijkstra(map, &princess1, princesses + 1);
+    printf("P2 %d\n", princess2.value);
+    
+    Node princess3 = dijkstra(map, &princess2, princesses + 2);
+    printf("P3 %d\n", princess3.value);
     
     return (int *) calloc(1, sizeof(int)); // TODO return minheap of coordinates
 }
