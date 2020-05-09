@@ -234,10 +234,10 @@ void insert (Node *node, Heap **heap) {
         // Rearrange heap
         Node temp = *last_element;
         
-        int i = (*heap)->size;
+        int i = (*heap)->size - 1;
         Node *parent = &((*heap)->heap[(i - 1) / 2]);
         
-        while (i > 1 && temp.value < parent->value) {
+        while (i > 0 && temp.value < parent->value) {
             (*heap)->heap[i] = *parent;
             i = (i - 1) / 2;
             parent = &((*heap)->heap[(i - 1) / 2]);
@@ -293,25 +293,23 @@ Heap *dijkstra (Map *map, Coordinates *start, Coordinates *stop) {
     
     Heap *heap = malloc(sizeof(Heap));
     heap->size = 0;
-    heap->heap = (Node *) malloc(sizeof(Node));
+    heap->heap = NULL;
     
     // Init heap with startnode
     Node *startNode = malloc(sizeof(Node));
     startNode->coordinates = *start;
     startNode->value = 1;
     startNode->prev = NULL;
-    insert(startNode, &heap);
     
     Node actual = pop(&heap);
-    
-    while (actual.coordinates.x != stop->x || actual.coordinates.y != stop->y) {
-        insert(move(&actual, map, -1, 0), &heap); // up
-        insert(move(&actual, map, 0, 1), &heap);  // right
-        insert(move(&actual, map, +1, 0), &heap); // down
-        insert(move(&actual, map, 0, -1), &heap); // left
-        actual = pop(&heap);
-    }
-    
+
+//    while (actual.coordinates.x != stop->x || actual.coordinates.y != stop->y) {
+//        insert(move(&actual, map, -1, 0), &heap); // up
+//        insert(move(&actual, map, 0, 1), &heap);  // right
+//        insert(move(&actual, map, +1, 0), &heap); // down
+//        insert(move(&actual, map, 0, -1), &heap); // left
+//        actual = pop(&heap);
+//    }
     return heap;
 }
 
@@ -339,7 +337,7 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
 int main () {
     int n = 0, m = 0, t = 0, path_length = 0;
     
-    char **map = file_load("input/test.txt", &n, &m, &t);
+    char **map = file_load("input/devtest.txt", &n, &m, &t);
     int *path = zachran_princezne(map, n, m, t, &path_length);
     //result(map, &t, path, &path_length);
     
