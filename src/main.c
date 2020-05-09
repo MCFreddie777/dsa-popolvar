@@ -261,27 +261,30 @@ Node pop (Heap **heap) {
     // shrink the array
     ((*heap)->heap) = (Node *) realloc((*heap)->heap, ((*heap)->size * sizeof(Node)));
     
-    int where = 0;
-    while (1) {
-        int dest = where;
-        
-        if (2 * where + 1 < (*heap)->size - 1 && (*heap)->heap[2 * where + 1].value < (*heap)
-            ->heap[dest].value)
-            dest = 2 * where + 1;
-        if (2 * where + 2 < (*heap)->size - 1 && (*heap)->heap[2 * where + 2].value < (*heap)
-            ->heap[dest].value)
-            dest = 2 * where + 2;
-        
-        if (dest != where) {
-            Node temp = (*heap)->heap[where];
-            (*heap)->heap[where] = (*heap)->heap[dest];
-            (*heap)->heap[dest] = temp;
-            where = dest;
+    int i = 0;
+    int j = (2 * i) + 1;
+    
+    while (j < (*heap)->size) {
+        // select the lesser children
+        if ((*heap)->heap[j].value > (*heap)->heap[j + 1].value) {
+            j = j + 1;
         }
-        else {
-            return root;
+        
+        // swap the parent and child
+        if ((*heap)->heap[i].value > (*heap)->heap[j].value) {
+            Node temp = (*heap)->heap[i];
+            (*heap)->heap[i] = (*heap)->heap[j];
+            (*heap)->heap[j] = temp;
+            
+            // move the "parent" to the child
+            i = j;
+            
+            // move the "child pointer" into new parents child
+            j = (2 * j) + 1;
         }
+        else break;
     }
+    return root;
 };
 
 /**
@@ -301,15 +304,17 @@ Heap *dijkstra (Map *map, Coordinates *start, Coordinates *stop) {
     startNode->value = 1;
     startNode->prev = NULL;
     
+    insert(startNode, &heap);
     Node actual = pop(&heap);
-
-//    while (actual.coordinates.x != stop->x || actual.coordinates.y != stop->y) {
-//        insert(move(&actual, map, -1, 0), &heap); // up
-//        insert(move(&actual, map, 0, 1), &heap);  // right
-//        insert(move(&actual, map, +1, 0), &heap); // down
-//        insert(move(&actual, map, 0, -1), &heap); // left
-//        actual = pop(&heap);
-//    }
+    
+    while (actual.coordinates.x != stop->x || actual.coordinates.y != stop->y) {
+        insert(move(&actual, map, -1, 0), &heap); // up
+        insert(move(&actual, map, 0, 1), &heap);  // right
+        insert(move(&actual, map, +1, 0), &heap); // down
+        insert(move(&actual, map, 0, -1), &heap); // left
+        actual = pop(&heap);
+    }
+    
     return heap;
 }
 
