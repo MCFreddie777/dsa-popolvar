@@ -419,13 +419,54 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
 }
 
 int main () {
-    int n = 0, m = 0, t = 0, path_length = 0;
+    char **mapa;
+    int i, test, dlzka_cesty, cas, *cesta;
+    int n = 0, m = 0, t = 0;
     
-    char **map = file_load("input/test.txt", &n, &m, &t);
-    int *path = zachran_princezne(map, n, m, t, &path_length);
-    result(map, &t, path, path_length);
+    // TODO: remove
+    short debug = 1;
+    if (debug) test = 1;
     
-    free(path);
-    free_map(map, &n);
+    while (1) {
+        if (!debug) {
+            printf("Zadajte cislo testu (0 ukonci program):\n");
+            scanf("%d", &test);
+        }
+        
+        dlzka_cesty = 0;
+        n = m = t = 0;
+        switch (test) {
+            case 0:
+                return 0;
+            case 1:
+                mapa = file_load("input/test.txt", &n, &m, &t);
+                cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
+                exit(0); // TODO: remove
+                break;
+            case 2:
+                m = 10;
+                t = 12;
+                mapa = (char **) malloc(n * sizeof(char *));
+                mapa[0] = "CCHCNHCCHN";
+                mapa[1] = "NNCCCHHCCC";
+                mapa[2] = "DNCCNNHHHC";
+                mapa[3] = "CHHHCCCCCC";
+                mapa[4] = "CCCCCNHHHH";
+                mapa[5] = "PCHCCCNNNN";
+                mapa[6] = "NNNNNHCCCC";
+                mapa[7] = "CCCCCPCCCC";
+                mapa[8] = "CCCNNHHHHH";
+                mapa[9] = "HHHPCCCCCC";
+                cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
+                break;
+            case 3:
+                break;
+            default:
+                continue;
+        }
+        result(mapa, &t, cesta, dlzka_cesty);
+        free(cesta);
+        free_map(mapa, &n);
+    }
     return 0;
 }
