@@ -312,11 +312,10 @@ Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
     do {
         actual = pop(heap);
         flags[actual->coordinates.x][actual->coordinates.y] = 1;
+        
         for (int i = 0; i < 4; i++) {
             Node *m = move(actual, map, sX[i], sY[i]);
             
-            // Check if the new coordinates are not out of the map
-            // or has been visited previously
             if (m == NULL || flags[m->coordinates.x][m->coordinates.y]) continue;
             
             m->prev = actual;
@@ -324,11 +323,12 @@ Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
         }
     } while (actual->coordinates.x != stop->x || actual->coordinates.y != stop->y);
     
+    // TODO:
     // Free the memory for matrix of visited flags
-    for (int i = 0; i < map->x; i++) {
-        free(flags[i]);
-    }
-    free(flags);
+    // for (int i = 0; i < map->x; i++) {
+    // free(flags[i]);
+    // }
+    // free(flags);
     
     free(heap->heap);
     free(heap);
@@ -372,21 +372,33 @@ void permutePrincesses (
     Node *start,
     Coordinates *princesses,
     int n_of_princesses,
-    int index
+    int index,
+    Heap *result
 ) {
     for (int i = index; i < n_of_princesses; i++) {
         swap(princesses + i, princesses + index);
-        permutePrincesses(map, start, princesses, n_of_princesses, index + 1);
+        permutePrincesses(map, start, princesses, n_of_princesses, index + 1, result);
         swap(princesses + index, princesses + i);
     }
     if (index == n_of_princesses - 1) {
         Node *last = getLastPrincess(map, start, princesses, n_of_princesses);
-        printf(
-            "Princess: [%d,%d] | %d\n",
-            last->coordinates.x,
-            last->coordinates.y,
-            last->value
-        );
+        
+        // Push the result to the array of results
+        result->size++;
+        if (result->heap == NULL) {
+            (result->heap) = (Node **) malloc(result->max_size * sizeof(Node *));
+        }
+        else {
+            // Resize to double the length to avoid O(n^2) resizing.
+            if (result->size == result->max_size) {
+                result->max_size *= 2;
+                (result->heap) = (Node **) realloc(
+                    result->heap,
+                    (result->max_size * sizeof(Node *))
+                );
+            }
+        }
+        result->heap[result->size - 1] = last;
     }
 }
 
@@ -414,8 +426,22 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     // Get the dragon, POPOLVAR!
     Node *path = dijkstra(map, start, dragon);
     
-    // TODO:  Get the shortest path by permuting between princesses
-    permutePrincesses(map, path, princesses, n_of_princesses, 0);
+    // Result array to be stored all values of all permutations
+    Heap *result = (Heap *) malloc(sizeof(Heap));
+    result->size = 0;
+    result->max_size = 4;
+    result->heap = NULL;
+    
+    // Get the shortest path by permuting between princesses
+    permutePrincesses(map, path, princesses, n_of_princesses, 0, result);
+    
+    // Get the minimum cost value
+    Node *min = result->heap[0];
+    for (int i = 1; i < result->size; i++) {
+        if (result->heap[i]->value < min->value)
+            min = result->heap[i];
+    }
+    path = min;
     
     /*
      * Fill the found path into array of int* in reverse order
@@ -440,7 +466,7 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
 
 int main () {
     char **mapa;
-    int i, test, dlzka_cesty, cas, *cesta;
+    int test, dlzka_cesty, *cesta;
     int n = 0, m = 0, t = 0;
     
     // TODO: remove
