@@ -497,6 +497,10 @@ int main () {
                 mapa = file_load("input/test5.txt", &n, &m, &t);
                 cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
                 break;
+            case 6:
+                mapa = file_load("input/test6.txt", &n, &m, &t);
+                cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
+                break;
             default:
                 continue;
         }
