@@ -295,10 +295,10 @@ Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
     heap->max_size = 4;
     heap->heap = NULL;
     
-    // boolean array to mark the visited / not visited
+    // boolean matrix to mark the visited / not visited nodes
     short **flags = (short **) malloc(map->x * sizeof(short *));
     for (int i = 0; i < map->x; i++) {
-        flags[i] = (short *) malloc(map->y * sizeof(short));
+        flags[i] = (short *) calloc(0, map->y * sizeof(short));
     }
     
     // push starting node into the heap
@@ -323,6 +323,12 @@ Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
             push(m, heap);
         }
     } while (actual->coordinates.x != stop->x || actual->coordinates.y != stop->y);
+    
+    // Free the memory for matrix of visited flags
+    for (int i = 0; i < map->x; i++) {
+        free(flags[i]);
+    }
+    free(flags);
     
     free(heap->heap);
     free(heap);
@@ -376,7 +382,7 @@ void permutePrincesses (
     if (index == n_of_princesses - 1) {
         Node *last = getLastPrincess(map, start, princesses, n_of_princesses);
         printf(
-            "[%d,%d] | %d\n",
+            "Princess: [%d,%d] | %d\n",
             last->coordinates.x,
             last->coordinates.y,
             last->value
@@ -409,7 +415,7 @@ int *zachran_princezne (char **mapa, int n, int m, int t, int *dlzka_cesty) {
     Node *path = dijkstra(map, start, dragon);
     
     // TODO:  Get the shortest path by permuting between princesses
-    // permutePrincesses(map, path, princesses, n_of_princesses, 0);
+    permutePrincesses(map, path, princesses, n_of_princesses, 0);
     
     /*
      * Fill the found path into array of int* in reverse order
