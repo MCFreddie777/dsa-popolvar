@@ -69,19 +69,6 @@ char **file_load (char *path, int *x, int *y, int *t) {
     return map;
 }
 
-/**
- * Frees the 2D array memory
- *
- * @param map the map
- * @param x height of the map
- */
-void free_map (char **map, const int x) {
-    for (int i = 0; i < x; i++) {
-        free(map[i]);
-    }
-    free(map);
-}
-
 void free_linkedlist (Node *start) {
     Node *actual = start;
     Node *prev = start->prev;
@@ -296,9 +283,9 @@ Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
     heap->heap = NULL;
     
     // boolean matrix to mark the visited / not visited nodes
-    short **flags = (short **) malloc(map->x * sizeof(short *));
+    short **visited = (short **) malloc(map->x * sizeof(short *));
     for (int i = 0; i < map->x; i++) {
-        flags[i] = (short *) calloc(0, map->y * sizeof(short));
+        visited[i] = (short *) calloc(map->y, sizeof(short));
     }
     
     // push starting node into the heap
@@ -311,27 +298,26 @@ Node *dijkstra (Map *map, Node *start, Coordinates *stop) {
     Node *actual;
     do {
         actual = pop(heap);
-        flags[actual->coordinates.x][actual->coordinates.y] = 1;
+        visited[actual->coordinates.x][actual->coordinates.y] = 1;
         
         for (int i = 0; i < 4; i++) {
             Node *m = move(actual, map, sX[i], sY[i]);
             
-            if (m == NULL || flags[m->coordinates.x][m->coordinates.y]) continue;
+            if (m == NULL || visited[m->coordinates.x][m->coordinates.y]) continue;
             
             m->prev = actual;
             push(m, heap);
         }
     } while (actual->coordinates.x != stop->x || actual->coordinates.y != stop->y);
     
-    // TODO:
-    // Free the memory for matrix of visited flags
-    // for (int i = 0; i < map->x; i++) {
-    // free(flags[i]);
-    // }
-    // free(flags);
+    // Cleanup memory
+    for (int i = 0; i < map->x; i++)
+        free(visited[i]);
+    free(visited);
     
     free(heap->heap);
     free(heap);
+    
     return actual;
 }
 
@@ -469,15 +455,9 @@ int main () {
     int test, dlzka_cesty, *cesta;
     int n = 0, m = 0, t = 0;
     
-    // TODO: remove
-    short debug = 1;
-    if (debug) test = 1;
-    
     while (1) {
-        if (!debug) {
-            printf("Zadajte cislo testu (0 ukonci program):\n");
-            scanf("%d", &test);
-        }
+        printf("Zadajte cislo testu (0 ukonci program):\n");
+        scanf("%d", &test);
         
         dlzka_cesty = 0;
         n = m = t = 0;
@@ -509,13 +489,23 @@ int main () {
                 mapa = file_load("input/test3.txt", &n, &m, &t);
                 cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
                 break;
+            case 4:
+                mapa = file_load("input/test4.txt", &n, &m, &t);
+                cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
+                break;
+            case 5:
+                mapa = file_load("input/test5.txt", &n, &m, &t);
+                cesta = zachran_princezne(mapa, n, m, t, &dlzka_cesty);
+                break;
             default:
                 continue;
         }
         result(mapa, &t, cesta, dlzka_cesty);
         free(cesta);
-        free_map(mapa, n); // TODO: buggy in case of test2
-        exit(0); // TODO: remove
+        for (int i = 0; i < n; i++) {
+            free(mapa[i]);
+        }
+        free(mapa);
     }
     return 0;
 }
